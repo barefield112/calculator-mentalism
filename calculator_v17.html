@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Calculator</title>
+<style>
+  :root{
+    --bg:#000000;
+    --grey-dark:#333333;
+    --grey-func:#474747;
+    --grey-func-active:#5c5c5c;
+    --orange:#ff9500;
+    --orange-active:#ffb143;
+    --grey-dark-active:#737373;
+    --text:#ffffff;
+  }
+  *{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+  }
+  button.key, .display, .icon-btn{
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  }
+  html,body{
+    margin:0; padding:0; height:100%; background:var(--bg);
+    font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;
+    overflow:hidden;
+  }
+  .phone{
+    display:flex; flex-direction:column; height:100vh; height:100dvh; width:100%;
+    max-width:480px; margin:0 auto; background:var(--bg); position:relative;
+  }
+  .statusbar{
+    display:flex; justify-content:flex-end; align-items:center;
+    padding:10px 26px 0 30px; color:var(--text); font-size:15px; font-weight:600;
+    flex-shrink:0;
+  }
+  .statusbar .icons{display:flex; align-items:center; gap:5px;}
+  .toolbar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 22px 0 22px; flex-shrink:0;
+  }
+  .icon-btn{
+    width:34px; height:34px; border-radius:50%; background:#1c1c1c;
+    display:flex; align-items:center; justify-content:center; border:none;
+    color:#e8e8e8; cursor:pointer;
+  }
+  .icon-btn svg{width:17px; height:17px;}
+  .display-area{
+    flex:1; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end;
+    padding:0 26px 8px 26px; min-height:0;
+  }
+  .equation-line{
+    display:none; color:#8e8e93; font-weight:400; text-align:right; width:100%;
+    line-height:1.2; white-space:nowrap; font-size:min(6vw, 34px); margin-bottom:2px;
+    overflow-x:auto; overflow-y:hidden; -ms-overflow-style:none; scrollbar-width:none;
+  }
+  .equation-line::-webkit-scrollbar{display:none;}
+  .display{
+    color:var(--text); font-weight:400; text-align:right; width:100%;
+    line-height:1; white-space:nowrap; font-size:min(15vw, 90px);
+    overflow-x:auto; overflow-y:hidden; -ms-overflow-style:none; scrollbar-width:none;
+  }
+  .display::-webkit-scrollbar{display:none;}
+  .keys{
+    display:flex; flex-direction:column; gap:2.6vw; max-width:480px;
+    margin:0 auto; width:100%;
+    padding:0 3vw 3vw 3vw; flex-shrink:0; box-sizing:border-box;
+  }
+  .row{display:flex; flex-direction:row; gap:2.6vw; width:100%;}
+  button.key{
+    flex:0 0 auto; width:21.6vw; height:21.6vw; max-width:104px; max-height:104px;
+    border-radius:50%; border:none; font-size:min(8.6vw,36.8px); font-weight:500;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    color:var(--text); padding:0; line-height:1;
+    transition:transform .7s cubic-bezier(0.34, 1.56, 0.64, 1), filter .45s ease-in-out, background-color .2s ease;
+  }
+  button.key:active{
+    transform:scale(1.2);
+    filter:brightness(1.5);
+  }
+  button.key svg{width:46%; height:46%; flex-shrink:0;}
+  .key.light{background:var(--grey-func); color:var(--text);}
+  .key.light:active{background:var(--grey-func-active);}
+  .key.dark{background:var(--grey-dark);}
+  .key.dark:active{background:var(--grey-dark-active);}
+  .key.accent{background:var(--orange); font-size:min(9.8vw,41.4px); font-weight:600;}
+  .key.accent:active{background:var(--orange-active);}
+  .keys.history-mode .key.dark{
+    color:var(--orange); font-size:min(4.6vw,20px); font-weight:600;
+    overflow:hidden; text-overflow:ellipsis; padding:0 4px;
+  }
+  .keys.history-mode .key.light,
+  .keys.history-mode .key.accent{
+    opacity:0.25;
+  }
+  .keys.history-mode-bday .key.accent{
+    opacity:1; font-size:min(3.6vw,15px); font-weight:700;
+    white-space:normal; line-height:1.15; padding:2px; overflow:hidden;
+  }
+
+  /* ---- Secret settings panel ---- */
+  .settings-overlay{
+    position:absolute; inset:0; background:rgba(0,0,0,0.55);
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:20;
+  }
+  .settings-overlay.open{opacity:1; pointer-events:auto;}
+  .settings-sheet{
+    background:#1c1c1e; width:100%; max-width:480px; border-radius:22px 22px 0 0;
+    padding:18px 20px 28px 20px; transform:translateY(100%); transition:transform .3s ease;
+    max-height:88%; overflow-y:auto;
+  }
+  .settings-overlay.open .settings-sheet{transform:translateY(0);}
+  .sheet-handle{width:36px; height:4px; background:#555; border-radius:2px; margin:0 auto 16px auto;}
+  .sheet-title{color:#fff; font-size:19px; font-weight:600; margin-bottom:2px;}
+  .sheet-sub{color:#8e8e93; font-size:12.5px; margin-bottom:18px;}
+  .field-group{margin-bottom:16px;}
+  .field-label{color:#a1a1a6; font-size:12px; text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px; display:block;}
+  .field-input, .field-select{
+    width:100%; background:#2c2c2e; border:1px solid #3a3a3c; color:#fff;
+    border-radius:10px; padding:11px 12px; font-size:16px; outline:none;
+  }
+  .field-select{appearance:none; -webkit-appearance:none;}
+  .segmented{display:flex; background:#2c2c2e; border-radius:10px; padding:3px; gap:3px;}
+  .segmented button{
+    flex:1; background:transparent; border:none; color:#c7c7cc; font-size:13px;
+    padding:8px 4px; border-radius:8px; cursor:pointer;
+  }
+  .segmented button.active{background:#5a5a5e; color:#fff;}
+  .status-line{
+    display:flex; justify-content:space-between; align-items:center;
+    background:#2c2c2e; border-radius:10px; padding:12px 14px; margin-bottom:16px;
+    color:#fff; font-size:13px;
+  }
+  .status-line span.count{color:var(--orange); font-weight:600;}
+  .sheet-divider{height:1px; background:#3a3a3c; margin:20px 0 14px 0;}
+  .bday-index-row{display:flex; gap:8px;}
+  .bday-index-field{flex:1; display:flex; flex-direction:column; gap:5px;}
+  .bday-index-field span{color:#a1a1a6; font-size:11px; line-height:1.2;}
+  .bday-index-field .field-input{padding:9px 8px; text-align:center; font-size:15px;}
+  .btn-row{display:flex; gap:10px; margin-top:8px;}
+  .btn{
+    flex:1; padding:13px; border-radius:12px; border:none; font-size:15px; font-weight:600; cursor:pointer;
+  }
+  .btn-primary{background:var(--orange); color:#000;}
+  .btn-secondary{background:#3a3a3c; color:#fff;}
+  .btn-danger{background:#3a3a3c; color:#ff453a;}
+  .toggle-note{color:#636366; font-size:11.5px; margin-top:6px; line-height:1.4;}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+
+  <div class="statusbar">
+    <div class="icons">
+      <svg viewBox="0 0 18 12" fill="none"><path d="M1 10L1 11.5C1 11.7761 1.22386 12 1.5 12H2.5C2.77614 12 3 11.7761 3 11.5V10C3 9.72386 2.77614 9.5 2.5 9.5H1.5C1.22386 9.5 1 9.72386 1 10Z" fill="white"/><path d="M5 7.5V11.5C5 11.7761 5.22386 12 5.5 12H6.5C6.77614 12 7 11.7761 7 11.5V7.5C7 7.22386 6.77614 7 6.5 7H5.5C5.22386 7 5 7.22386 5 7.5Z" fill="white"/><path d="M9 5V11.5C9 11.7761 9.22386 12 9.5 12H10.5C10.7761 12 11 11.7761 11 11.5V5C11 4.72386 10.7761 4.5 10.5 4.5H9.5C9.22386 4.5 9 4.72386 9 5Z" fill="white"/><path d="M13 2.5V11.5C13 11.7761 13.2239 12 13.5 12H14.5C14.7761 12 15 11.7761 15 11.5V2.5C15 2.22386 14.7761 2 14.5 2H13.5C13.2239 2 13 2.22386 13 2.5Z" fill="white"/></svg>
+      <svg viewBox="0 0 16 12" fill="none"><path d="M8 10.5C8.69036 10.5 9.25 9.94036 9.25 9.25C9.25 8.55964 8.69036 8 8 8C7.30964 8 6.75 8.55964 6.75 9.25C6.75 9.94036 7.30964 10.5 8 10.5Z" fill="white"/><path d="M8 6C9.3 6 10.5 6.5 11.4 7.3L10.3 8.5C9.7 8 8.9 7.7 8 7.7C7.1 7.7 6.3 8 5.7 8.5L4.6 7.3C5.5 6.5 6.7 6 8 6Z" fill="white"/><path d="M8 2.5C10.4 2.5 12.6 3.4 14.3 4.9L13.2 6.1C11.8 4.9 10 4.2 8 4.2C6 4.2 4.2 4.9 2.8 6.1L1.7 4.9C3.4 3.4 5.6 2.5 8 2.5Z" fill="white"/></svg>
+      <svg viewBox="0 0 25 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2.5" stroke="white" opacity="0.4"/><rect x="2.5" y="2.5" width="13" height="7" rx="1.2" fill="white"/><path d="M22.5 4.5V7.5C23.3 7.2 23.8 6.4 23.8 6C23.8 5.6 23.3 4.8 22.5 4.5Z" fill="white" opacity="0.4"/></svg>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="icon-btn" id="historyBtn" aria-label="History">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="icon-btn" id="convertBtn" aria-label="Converter">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h3M13 11h3M8 15h3M13 15h3" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div class="display-area">
+    <div class="equation-line" id="equationLine"></div>
+    <div class="display" id="display">0</div>
+  </div>
+
+  <div class="keys">
+    <div class="row">
+      <button class="key light" data-action="backspace" aria-label="Delete">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5H19a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H7L1 12z"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+      </button>
+      <button class="key light" data-action="clear" id="clearBtn">AC</button>
+      <button class="key light" data-action="percent">%</button>
+      <button class="key accent" data-action="op" data-op="÷">÷</button>
+    </div>
+    <div class="row">
+      <button class="key dark" data-action="digit" data-val="7">7</button>
+      <button class="key dark" data-action="digit" data-val="8">8</button>
+      <button class="key dark" data-action="digit" data-val="9">9</button>
+      <button class="key accent" data-action="op" data-op="×">×</button>
+    </div>
+    <div class="row">
+      <button class="key dark" data-action="digit" data-val="4">4</button>
+      <button class="key dark" data-action="digit" data-val="5">5</button>
+      <button class="key dark" data-action="digit" data-val="6">6</button>
+      <button class="key accent" data-action="op" data-op="−">−</button>
+    </div>
+    <div class="row">
+      <button class="key dark" data-action="digit" data-val="1">1</button>
+      <button class="key dark" data-action="digit" data-val="2">2</button>
+      <button class="key dark" data-action="digit" data-val="3">3</button>
+      <button class="key accent" data-action="op" data-op="+">+</button>
+    </div>
+    <div class="row">
+      <button class="key dark" data-action="negate">+/-</button>
+      <button class="key dark" data-action="digit" data-val="0">0</button>
+      <button class="key dark" data-action="decimal">.</button>
+      <button class="key accent" data-action="equals">=</button>
+    </div>
+  </div>
+
+  <!-- Secret settings sheet -->
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Force Settings</div>
+      <div class="sheet-sub">Configure the number this calculator will land on.</div>
+
+      <div class="status-line">
+        <span>"=" presses since AC</span>
+        <span class="count" id="pressCountDisplay">0</span>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Forced result</label>
+        <input class="field-input" id="forceValue" type="text" inputmode="decimal" placeholder="e.g. 1728">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Trigger after this many "=" presses</label>
+        <input class="field-input" id="triggerCount" type="number" min="0" placeholder="e.g. 5">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Behavior</label>
+        <div class="segmented" id="behaviorSeg">
+          <button data-behavior="once" class="active">Force once</button>
+          <button data-behavior="always">Force every = after</button>
+        </div>
+        <div class="toggle-note">"Force once" shows the number on the next = only, then the calculator resumes real math. "Force every =" keeps returning it until you hit AC.</div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Reveal speed</label>
+        <div class="segmented" id="speedSeg">
+          <button data-speed="instant" class="active">Instant</button>
+          <button data-speed="type">Type it in</button>
+        </div>
+        <div class="toggle-note">"Type it in" animates the digits appearing one at a time instead of snapping in, for a more natural sell.</div>
+      </div>
+
+      <div class="sheet-divider"></div>
+      <div class="sheet-title" style="font-size:16px;">Birthday Mode</div>
+      <div class="sheet-sub">When someone multiplies a few numbers that matter to them (day, month, year), read their birthday back during the peek.</div>
+
+      <div class="field-group">
+        <label class="field-label">Birthday mode</label>
+        <div class="segmented" id="birthdaySeg">
+          <button data-bday="off" class="active">Off</button>
+          <button data-bday="on">On</button>
+        </div>
+      </div>
+
+      <div class="field-group" id="birthdayFields" style="display:none;">
+        <label class="field-label">Which typed number is which</label>
+        <div class="bday-index-row">
+          <div class="bday-index-field">
+            <span>Day = input #</span>
+            <input class="field-input" id="dayIndex" type="number" min="1" max="10" placeholder="1">
+          </div>
+          <div class="bday-index-field">
+            <span>Month = input #</span>
+            <input class="field-input" id="monthIndex" type="number" min="1" max="10" placeholder="2">
+          </div>
+          <div class="bday-index-field">
+            <span>Year = input #</span>
+            <input class="field-input" id="yearIndex" type="number" min="1" max="10" placeholder="3">
+          </div>
+        </div>
+        <div class="toggle-note">"Input #" refers to the order the numbers were typed in, same order used for the peek (7, 8, 9, 4, 5, 6...). During the peek, ÷ shows their birthday as m/d, × shows the year, − shows their age, + shows their star sign, and = shows the day of the week they were born.</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-danger" id="resetCounterBtn">Reset counter</button>
+        <button class="btn btn-secondary" id="closeSheetBtn">Close</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="armBtn">Arm &amp; return to calculator</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  document.addEventListener('touchstart', function(){}, {passive:true});
+
+  const display = document.getElementById('display');
+  const keys = document.querySelector('.keys');
+
+  // ---- Calculator state ----
+  let current = '0';
+  let previous = null;
+  let pendingOp = null;
+  let overwrite = true;
+
+  // ---- Force-engine state ----
+  let forceValue = '';
+  let triggerCount = null;
+  let behavior = 'once';       // once | always
+  let speed = 'instant';       // instant | type
+  let pressCount = 0;
+  let armed = false;
+  let forcedThisSession = false; // used for "once" behavior
+
+  // ---- Input history (for the +/- long-press peek) ----
+  let keyLog = [];                 // completed numbers typed since last AC, in order
+  let numberIsFresh = false;        // true when `current` holds a typed value not yet logged
+  const HISTORY_SLOTS = ['7','8','9','4','5','6','1','2','3','0'];
+  let historyModeActive = false;
+
+  // ---- Birthday mode ----
+  let birthdayMode = false;
+  let dayIndex = null;
+  let monthIndex = null;
+  let yearIndex = null;
+
+  // ---- Equation display (live expression + last-equation history line) ----
+  let equationLine = '';
+  const equationEl = document.getElementById('equationLine');
+
+  function setEquationLine(text){
+    equationLine = text;
+    equationEl.textContent = text;
+    equationEl.style.display = text ? 'block' : 'none';
+    equationEl.scrollLeft = equationEl.scrollWidth;
+  }
+
+  function formatNumberPart(str){
+    if(str === 'Error') return str;
+    if(str.replace('-','').replace('.','').length > 9){
+      const num = parseFloat(str);
+      if(!isNaN(num)) return num.toExponential(4);
+    }
+    const neg = str.startsWith('-');
+    const s = neg ? str.slice(1) : str;
+    const parts = s.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return (neg ? '-' : '') + parts.join('.');
+  }
+
+  function render(){
+    let mainText;
+    if(pendingOp && previous !== null){
+      mainText = overwrite
+        ? formatNumberPart(previous) + pendingOp
+        : formatNumberPart(previous) + pendingOp + formatNumberPart(current);
+    } else {
+      mainText = formatNumberPart(current);
+    }
+    display.textContent = mainText;
+    display.scrollLeft = display.scrollWidth;
+  }
+
+  function resetCalcState(){
+    current = '0'; previous = null; pendingOp = null; overwrite = true;
+  }
+
+  function resetForceCounter(){
+    pressCount = 0;
+    forcedThisSession = false;
+    document.getElementById('pressCountDisplay').textContent = '0';
+  }
+
+  function bumpCounter(kind){
+    // The force trigger always counts "=" presses only, regardless of anything else.
+    if(kind === 'equals'){
+      pressCount++;
+      document.getElementById('pressCountDisplay').textContent = pressCount;
+    }
+  }
+
+  function flushPendingNumber(){
+    if(numberIsFresh){
+      keyLog.push(current);
+      numberIsFresh = false;
+    }
+  }
+
+  function shouldForceNow(){
+    if(!armed) return false;
+    if(triggerCount === null || forceValue === '') return false;
+    if(pressCount < triggerCount) return false;
+    if(behavior === 'once' && forcedThisSession) return false;
+    return true;
+  }
+
+  function typeInResult(str){
+    current = '';
+    render();
+    let i = 0;
+    const iv = setInterval(()=>{
+      current += str[i];
+      render();
+      i++;
+      if(i >= str.length) clearInterval(iv);
+    }, 90);
+  }
+
+  function doEquals(){
+    bumpCounter('equals');
+    flushPendingNumber();
+    let equationText = '';
+    if(pendingOp && previous !== null){
+      equationText = formatNumberPart(previous) + pendingOp + formatNumberPart(current);
+    }
+    if(shouldForceNow()){
+      forcedThisSession = true;
+      previous = null; pendingOp = null; overwrite = true;
+      if(equationText) setEquationLine(equationText);
+      if(speed === 'type'){
+        typeInResult(forceValue);
+      } else {
+        current = forceValue;
+        render();
+      }
+      return;
+    }
+    if(pendingOp && previous !== null){
+      const a = parseFloat(previous);
+      const b = parseFloat(current);
+      let res;
+      switch(pendingOp){
+        case '+': res = a + b; break;
+        case '−': res = a - b; break;
+        case '×': res = a * b; break;
+        case '÷': res = b === 0 ? NaN : a / b; break;
+      }
+      current = isNaN(res) ? 'Error' : String(parseFloat(res.toPrecision(12)));
+      previous = null; pendingOp = null; overwrite = true;
+      setEquationLine(equationText);
+      render();
+    }
+  }
+
+  keys.addEventListener('click', (e)=>{
+    if(historyModeActive) return; // ignore taps while the peek is showing
+    const btn = e.target.closest('.key');
+    if(!btn) return;
+    const action = btn.dataset.action;
+    if(action === 'negate') return; // handled entirely by the press-and-hold logic below
+
+    if(action === 'digit'){
+      if(equationLine && overwrite && previous === null && pendingOp === null){ setEquationLine(''); }
+      if(overwrite || current === '0'){ current = btn.dataset.val; overwrite=false; }
+      else current += btn.dataset.val;
+      numberIsFresh = true;
+      render();
+    } else if(action === 'decimal'){
+      if(equationLine && overwrite && previous === null && pendingOp === null){ setEquationLine(''); }
+      if(overwrite){ current = '0.'; overwrite = false; }
+      else if(!current.includes('.')) current += '.';
+      numberIsFresh = true;
+      render();
+    } else if(action === 'percent'){
+      current = String(parseFloat(current)/100);
+      render();
+    } else if(action === 'backspace'){
+      if(equationLine){ setEquationLine(''); }
+      if(current.length <= 1 || (current.startsWith('-') && current.length <= 2)){
+        current = '0'; overwrite = true; numberIsFresh = false;
+      } else {
+        current = current.slice(0, -1);
+        if(current === '-' ) { current = '0'; overwrite = true; numberIsFresh = false; }
+      }
+      render();
+    } else if(action === 'clear'){
+      keyLog = [];
+      numberIsFresh = false;
+      setEquationLine('');
+      resetCalcState();
+      render();
+    } else if(action === 'op'){
+      if(previous === null && pendingOp === null){ setEquationLine(''); }
+      flushPendingNumber();
+      if(pendingOp && previous !== null && !overwrite){
+        doEquals();
+      }
+      previous = current;
+      pendingOp = btn.dataset.op;
+      overwrite = true;
+      render();
+    } else if(action === 'equals'){
+      doEquals();
+    }
+  });
+
+  // ---- +/- button: quick tap = normal negate, 2s hold = history peek ----
+  const negateBtn = document.querySelector('.key[data-action="negate"]');
+  let holdTimer = null;
+  let longPressFired = false;
+
+  function performNegate(){
+    if(current !== '0') current = current.startsWith('-') ? current.slice(1) : '-'+current;
+    render();
+  }
+
+  function getDigitBtn(val){
+    return document.querySelector('.key[data-action="digit"][data-val="'+val+'"]');
+  }
+  function getOpBtn(sym){
+    return document.querySelector('.key[data-action="op"][data-op="'+sym+'"]');
+  }
+  function getEqualsBtn(){
+    return document.querySelector('.key[data-action="equals"]');
+  }
+
+  const ZODIAC_TABLE = [
+    {d:19, sign:'Capricorn'}, {d:18, sign:'Aquarius'}, {d:20, sign:'Pisces'},
+    {d:19, sign:'Aries'},     {d:20, sign:'Taurus'},   {d:20, sign:'Gemini'},
+    {d:22, sign:'Cancer'},    {d:22, sign:'Leo'},      {d:22, sign:'Virgo'},
+    {d:22, sign:'Libra'},     {d:21, sign:'Scorpio'},  {d:21, sign:'Sagittarius'}
+  ];
+  const WEEKDAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  function zodiacSign(month, day){
+    const entry = ZODIAC_TABLE[month-1];
+    return day <= entry.d ? entry.sign : ZODIAC_TABLE[month % 12].sign;
+  }
+
+  function calcAge(day, month, year){
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    const hadBirthdayThisYear = (today.getMonth()+1 > month) || (today.getMonth()+1 === month && today.getDate() >= day);
+    if(!hadBirthdayThisYear) age--;
+    return age;
+  }
+
+  function computeBirthdayInfo(displayLog){
+    if(!dayIndex || !monthIndex || !yearIndex) return null;
+    const dRaw = displayLog[dayIndex-1];
+    const mRaw = displayLog[monthIndex-1];
+    const yRaw = displayLog[yearIndex-1];
+    if(dRaw === undefined || mRaw === undefined || yRaw === undefined) return null;
+
+    const day = parseInt(dRaw, 10);
+    const month = parseInt(mRaw, 10);
+    let year = parseInt(yRaw, 10);
+    if(isNaN(day) || isNaN(month) || isNaN(year)) return null;
+    if(month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+    if(year < 100){
+      const currentYY = new Date().getFullYear() % 100;
+      year = year <= currentYY ? 2000 + year : 1900 + year;
+    }
+
+    const dateObj = new Date(year, month - 1, day);
+    if(dateObj.getMonth() !== month - 1) return null; // invalid calendar date, e.g. Feb 30
+
+    return {
+      mdStr: month + '/' + day,
+      yearStr: String(year),
+      ageStr: String(calcAge(day, month, year)),
+      signStr: zodiacSign(month, day),
+      weekdayStr: WEEKDAY_NAMES[dateObj.getDay()]
+    };
+  }
+
+  function showHistoryPeek(){
+    historyModeActive = true;
+    keys.classList.add('history-mode');
+    const displayLog = numberIsFresh ? keyLog.concat([current]) : keyLog;
+    HISTORY_SLOTS.forEach((val, i)=>{
+      const b = getDigitBtn(val);
+      b.textContent = displayLog[i] !== undefined ? displayLog[i] : '';
+    });
+
+    if(birthdayMode){
+      keys.classList.add('history-mode-bday');
+      const info = computeBirthdayInfo(displayLog);
+      getOpBtn('÷').textContent = info ? info.mdStr : '';
+      getOpBtn('×').textContent = info ? info.yearStr : '';
+      getOpBtn('−').textContent = info ? info.ageStr : '';
+      getOpBtn('+').textContent = info ? info.signStr : '';
+      getEqualsBtn().textContent = info ? info.weekdayStr : '';
+    }
+  }
+
+  function hideHistoryPeek(){
+    historyModeActive = false;
+    keys.classList.remove('history-mode');
+    keys.classList.remove('history-mode-bday');
+    HISTORY_SLOTS.forEach((val)=>{
+      const b = getDigitBtn(val);
+      b.textContent = val;
+    });
+    getOpBtn('÷').textContent = '÷';
+    getOpBtn('×').textContent = '×';
+    getOpBtn('−').textContent = '−';
+    getOpBtn('+').textContent = '+';
+    getEqualsBtn().textContent = '=';
+  }
+
+  function startHold(e){
+    e.preventDefault();
+    longPressFired = false;
+    holdTimer = setTimeout(()=>{
+      longPressFired = true;
+      showHistoryPeek();
+    }, 500);
+  }
+  function endHold(){
+    clearTimeout(holdTimer);
+    if(longPressFired){
+      hideHistoryPeek();
+      longPressFired = false;
+    } else {
+      performNegate();
+    }
+  }
+  function cancelHold(){
+    clearTimeout(holdTimer);
+    if(longPressFired){
+      hideHistoryPeek();
+      longPressFired = false;
+    }
+  }
+
+  negateBtn.addEventListener('pointerdown', startHold);
+  negateBtn.addEventListener('pointerup', endHold);
+  negateBtn.addEventListener('pointerleave', cancelHold);
+  negateBtn.addEventListener('pointercancel', cancelHold);
+
+  render();
+
+  // ---- Secret settings panel wiring ----
+  const overlay = document.getElementById('settingsOverlay');
+  const historyBtn = document.getElementById('historyBtn');
+  const closeSheetBtn = document.getElementById('closeSheetBtn');
+  const armBtn = document.getElementById('armBtn');
+  const resetCounterBtn = document.getElementById('resetCounterBtn');
+  const forceValueInput = document.getElementById('forceValue');
+  const triggerCountInput = document.getElementById('triggerCount');
+  const birthdayFields = document.getElementById('birthdayFields');
+  const dayIndexInput = document.getElementById('dayIndex');
+  const monthIndexInput = document.getElementById('monthIndex');
+  const yearIndexInput = document.getElementById('yearIndex');
+
+  historyBtn.addEventListener('click', ()=>{
+    overlay.classList.add('open');
+  });
+  closeSheetBtn.addEventListener('click', ()=>{
+    overlay.classList.remove('open');
+  });
+  overlay.addEventListener('click', (e)=>{
+    if(e.target === overlay) overlay.classList.remove('open');
+  });
+
+  document.getElementById('behaviorSeg').addEventListener('click', (e)=>{
+    const b = e.target.closest('button'); if(!b) return;
+    behavior = b.dataset.behavior;
+    [...b.parentElement.children].forEach(c=>c.classList.remove('active'));
+    b.classList.add('active');
+    saveSettings();
+  });
+  document.getElementById('speedSeg').addEventListener('click', (e)=>{
+    const b = e.target.closest('button'); if(!b) return;
+    speed = b.dataset.speed;
+    [...b.parentElement.children].forEach(c=>c.classList.remove('active'));
+    b.classList.add('active');
+    saveSettings();
+  });
+
+  document.getElementById('birthdaySeg').addEventListener('click', (e)=>{
+    const b = e.target.closest('button'); if(!b) return;
+    birthdayMode = b.dataset.bday === 'on';
+    [...b.parentElement.children].forEach(c=>c.classList.remove('active'));
+    b.classList.add('active');
+    birthdayFields.style.display = birthdayMode ? 'block' : 'none';
+    saveSettings();
+  });
+
+  function readBirthdayIndexInputs(){
+    const dv = parseInt(dayIndexInput.value, 10);
+    const mv = parseInt(monthIndexInput.value, 10);
+    const yv = parseInt(yearIndexInput.value, 10);
+    dayIndex = isNaN(dv) ? null : dv;
+    monthIndex = isNaN(mv) ? null : mv;
+    yearIndex = isNaN(yv) ? null : yv;
+    saveSettings();
+  }
+  dayIndexInput.addEventListener('input', readBirthdayIndexInputs);
+  monthIndexInput.addEventListener('input', readBirthdayIndexInputs);
+  yearIndexInput.addEventListener('input', readBirthdayIndexInputs);
+
+  resetCounterBtn.addEventListener('click', resetForceCounter);
+
+  armBtn.addEventListener('click', ()=>{
+    forceValue = forceValueInput.value.trim();
+    const tc = parseInt(triggerCountInput.value, 10);
+    triggerCount = isNaN(tc) ? 0 : tc;
+    armed = forceValue !== '';
+    resetForceCounter();
+    resetCalcState();
+    render();
+    saveSettings();
+    overlay.classList.remove('open');
+  });
+
+  // ---- Persist the force settings across reloads ----
+  const SETTINGS_KEY = 'calc_force_settings_v1';
+
+  function saveSettings(){
+    try{
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        forceValue, triggerCount, behavior, speed, armed,
+        birthdayMode, dayIndex, monthIndex, yearIndex
+      }));
+    }catch(err){ /* storage unavailable (e.g. inside a sandboxed preview) — settings just won't persist */ }
+  }
+
+  function setActiveSegment(containerEl, datasetKey, value){
+    [...containerEl.children].forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset[datasetKey] === value);
+    });
+  }
+
+  function loadSettings(){
+    let saved = null;
+    try{ saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)); }catch(err){ saved = null; }
+    if(!saved) return;
+
+    forceValue = saved.forceValue || '';
+    triggerCount = (saved.triggerCount === null || saved.triggerCount === undefined) ? null : saved.triggerCount;
+    behavior = saved.behavior || 'once';
+    speed = saved.speed || 'instant';
+    armed = !!saved.armed;
+    birthdayMode = !!saved.birthdayMode;
+    dayIndex = (saved.dayIndex === null || saved.dayIndex === undefined) ? null : saved.dayIndex;
+    monthIndex = (saved.monthIndex === null || saved.monthIndex === undefined) ? null : saved.monthIndex;
+    yearIndex = (saved.yearIndex === null || saved.yearIndex === undefined) ? null : saved.yearIndex;
+
+    forceValueInput.value = forceValue;
+    triggerCountInput.value = (triggerCount === null) ? '' : triggerCount;
+    setActiveSegment(document.getElementById('behaviorSeg'), 'behavior', behavior);
+    setActiveSegment(document.getElementById('speedSeg'), 'speed', speed);
+    setActiveSegment(document.getElementById('birthdaySeg'), 'bday', birthdayMode ? 'on' : 'off');
+    birthdayFields.style.display = birthdayMode ? 'block' : 'none';
+    dayIndexInput.value = dayIndex === null ? '' : dayIndex;
+    monthIndexInput.value = monthIndex === null ? '' : monthIndex;
+    yearIndexInput.value = yearIndex === null ? '' : yearIndex;
+  }
+
+  loadSettings();
+
+  // convert icon: quick disarm shortcut (double-tap to fully reset force + calc)
+  let lastTap = 0;
+  document.getElementById('convertBtn').addEventListener('click', ()=>{
+    const now = Date.now();
+    if(now - lastTap < 400){
+      armed = false;
+      resetForceCounter();
+      resetCalcState();
+      render();
+      saveSettings();
+    }
+    lastTap = now;
+  });
+})();
+</script>
+</body>
+</html>
